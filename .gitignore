@@ -1,0 +1,13 @@
+.idea
+
+# Ignore all files
+*
+
+# Except for directories
+!*/
+
+# Except .rs and .go files
+!*.rs
+!*.go
+
+template.go
