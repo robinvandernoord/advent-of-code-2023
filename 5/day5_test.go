@@ -14,7 +14,7 @@ import (
 // }
 
 func TestDev2(t *testing.T) {
-	result := run("dev.txt")
+	result := run2("dev.txt")
 
 	if result != 46 {
 		t.Fatalf("Incorrect result! %d != 46", result)
@@ -32,10 +32,10 @@ func TestDev2(t *testing.T) {
 // }
 
 func TestProd2(t *testing.T) {
-	result := run("test.txt")
+	result := run2("test.txt")
 
-	if result == 0 {
-		t.Fatalf("Incorrect result! %d = 0", result)
+	if result != 100165128 {
+		t.Fatalf("Incorrect result! %d != 100165128", result)
 	} else {
 		fmt.Printf("%d\n", result)
 	}

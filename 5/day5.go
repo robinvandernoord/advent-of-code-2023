@@ -1,6 +1,7 @@
 package day5
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"strconv"
@@ -29,16 +30,11 @@ type Mapping struct {
 	from int
 	to   int
 	dest int
+	rng  int
 }
 
 func newMapping(from int, rng int, dest int) Mapping {
-	mapping := Mapping{}
-
-	mapping.from = from
-	mapping.to = from + rng
-	mapping.dest = dest
-
-	return mapping
+	return Mapping{from, from + rng, dest, rng}
 }
 
 func createMap(rows string) []Mapping {
@@ -84,8 +80,14 @@ func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
 	return append(chunks, items)
 }
 
-func extractSeeds2(row string) []int {
-	seeds := make([]int, 0, 5)
+type SeedRange struct {
+	from int
+	to   int
+	rng  int
+}
+
+func extractSeeds2(row string) []SeedRange {
+	seeds := make([]SeedRange, 0, 5)
 
 	_seeds := strings.Split(row, ": ")[1]
 	_nums := strings.Split(_seeds, " ")
@@ -98,9 +100,7 @@ func extractSeeds2(row string) []int {
 		rng := to_int(_rng)
 		end := start + rng
 
-		for x := start; x < end; x++ {
-			seeds = append(seeds, x)
-		}
+		seeds = append(seeds, SeedRange{start, end, rng})
 
 	}
 
@@ -113,7 +113,7 @@ func run(filename string) int {
 	splitted := strings.Split(contents, "\n\n")
 
 	_seeds, _maps := splitted[0], splitted[1:]
-	seeds := extractSeeds2(_seeds)
+	seeds := extractSeeds(_seeds)
 
 	maps := [][]Mapping{}
 
@@ -145,4 +145,68 @@ func run(filename string) int {
 	}
 
 	return lowest
+}
+
+func isInSeedRange(start int, seeds []SeedRange, maps [][]Mapping) bool {
+	for _, mappings := range maps {
+		for _, mapping := range mappings {
+			if start >= mapping.dest && start < mapping.dest+mapping.rng {
+				start = mapping.from + start - mapping.dest
+				break
+			}
+
+		}
+	}
+
+	for _, sr := range seeds {
+		if start >= sr.from && start < sr.to {
+			return true
+		}
+	}
+
+	return false
+}
+
+func processRange(from int, to int, seeds []SeedRange, maps [][]Mapping, out chan int) {
+	for i := from; i < to; i++ {
+		if isInSeedRange(i, seeds, maps) {
+			out <- i
+			return
+		}
+	}
+}
+
+func reverse[T any](maps []T) {
+	for i, j := 0, len(maps)-1; i < j; i, j = i+1, j-1 {
+		maps[i], maps[j] = maps[j], maps[i]
+	}
+}
+
+func run2(filename string) int {
+	contents := readFile(filename)
+
+	splitted := strings.Split(contents, "\n\n")
+
+	_seeds, _maps := splitted[0], splitted[1:]
+	seeds := extractSeeds2(_seeds)
+
+	maps := [][]Mapping{}
+
+	for _, entry := range _maps {
+		maps = append(maps, createMap(entry))
+	}
+
+	reverse(maps)
+
+	ch := make(chan int) // Creating an unbuffered channel
+
+	for i := 0; i < 8; i++ {
+		// start 8 threads with different ranges
+		start := 10_000_000_000 * i
+		end := 10_000_000_000 * (i + 1)
+		fmt.Printf("thread %d: range %d - %d\n", i, start, end)
+		go processRange(start, end, seeds, maps, ch)
+	}
+
+	return <-ch // Receiving the value from the channel
 }
