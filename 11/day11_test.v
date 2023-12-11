@@ -24,8 +24,5 @@ fn test_dev_small() {
 }
 
 fn test_prod2() {
-	result := run2('test.txt', 1_000_000)
-	assert result > 713663412 // too low
-	assert result > 714261118 // too low
-	assert result == 0
+	assert run2('test.txt', 1_000_000) == 597714117556
 }
