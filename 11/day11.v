@@ -4,8 +4,8 @@ import os
 import arrays
 import math
 
-fn expand_rows(mut rows []string) []int {
-	mut empty_spaces := []int{}
+fn expand_rows(mut rows []string) []i64 {
+	mut empty_spaces := []i64{}
 
 	mut idx := 0
 	for true {
@@ -41,9 +41,9 @@ fn get_cols(rows []string) []string {
 }
 
 struct Universe {
-	y   int
-	x   int
-	num int
+	y   i64
+	x   i64
+	num i64
 }
 
 fn find_universes(rows []string, cols []string) []Universe {
@@ -76,7 +76,7 @@ fn make_pairs[T](rows []T) [][]T {
 	return pairs
 }
 
-fn distance_between_pair(pair []Universe) int {
+fn distance_between_pair(pair []Universe) i64 {
 	u1, u2 := pair[0], pair[1]
 
 	distance_x := math.abs(u1.x - u2.x)
@@ -85,7 +85,7 @@ fn distance_between_pair(pair []Universe) int {
 	return distance_x + distance_y
 }
 
-fn distance_between_pair2(pair []Universe, empty Empty) int {
+fn distance_between_pair2(pair []Universe, empty Empty) i64 {
 	mut distance := distance_between_pair(pair)
 
 	x_es := pair.map(it.x).sorted()
@@ -107,7 +107,7 @@ fn distance_between_pair2(pair []Universe, empty Empty) int {
 	return distance
 }
 
-fn run(filename string) int {
+fn run(filename string) i64 {
 	mut rows := os.read_lines(filename) or { panic(err) }
 
 	expand_rows(mut rows)
@@ -124,12 +124,12 @@ fn run(filename string) int {
 }
 
 struct Empty {
-	empty_space int
-	empty_x     []int
-	empty_y     []int
+	empty_space i64
+	empty_x     []i64
+	empty_y     []i64
 }
 
-fn run2(filename string, empty_space int) int {
+fn run2(filename string, empty_space i64) i64 {
 	mut rows := os.read_lines(filename) or { panic(err) }
 
 	empty_y := expand_rows(mut rows)
