@@ -42,7 +42,7 @@ fn bruteforce(layout string, groups []int) int {
 	return result
 }
 
-fn process_line(line string) int {
+fn process_line(line string) i64 {
 	// replace ? with every combination of . and #
 	// if valid? result++
 	layout, check := split(line, ' ')
@@ -53,19 +53,32 @@ fn process_line(line string) int {
 	return solve_recursive(layout, groups)
 }
 
-fn solve_recursive_(layout []string, groups []int, hash_count int, result string) int {
+fn solve_recursive_cached(layout []string, groups []int, hash_count int, result string, mut cache map[string]i64) i64 {
+	cache_key := '${layout}-${groups}-${hash_count}'
+	if cache_key in cache {
+		return cache[cache_key]
+	}
+
+	answer := solve_recursive_(layout, groups, hash_count, result, mut cache)
+
+	cache[cache_key] = answer
+
+	return answer
+}
+
+fn solve_recursive_(layout []string, groups []int, hash_count int, result string, mut cache map[string]int) i64 {
 	// als layout niet begint met ? -> volgende karakter
 	// als layout wel begint met ? -> vul # in en ga verder
 	//     als none resultaat, set . en ga verder
 	if layout.len == 0 {
 		if groups.len == 1 && groups[0] == hash_count {
-			println('result 1: ${result}')
+			// println('result 1: ${result}')
 			return 1
 		} else if groups.len > 0 {
 			// invalid sequence
 			return 0
 		} else {
-			println('result 2: ${result}')
+			// println('result 2: ${result}')
 			return 1
 		}
 	}
@@ -73,7 +86,7 @@ fn solve_recursive_(layout []string, groups []int, hash_count int, result string
 	if groups.len == 0 {
 		remaining := layout.filter(it == '#')
 
-		println('result 3: ${result}')
+		// println('result 3: ${result}')
 		return if remaining.len > 0 { 0 } else { 1 }
 	}
 
@@ -90,31 +103,37 @@ fn solve_recursive_(layout []string, groups []int, hash_count int, result string
 			return 0
 		}
 
-		return solve_recursive_(layout[1..], sliced_groups, 0, result + '.')
+		return solve_recursive_cached(layout[1..], sliced_groups, 0, result + '.', mut
+			cache)
 	} else if layout[0] == '#' {
 		if hash_count >= to_try {
 			// goofed up
 			return 0
 		}
 
-		return solve_recursive_(layout[1..], sliced_groups, hash_count + 1, result + '#')
+		return solve_recursive_cached(layout[1..], sliced_groups, hash_count + 1, result + '#', mut
+			cache)
 	} else { // ?
 		if hash_count > 0 && hash_count < to_try {
 			// must try #
-			return solve_recursive_(layout[1..], sliced_groups, hash_count + 1, result + '#')
-		} else if hash_count > to_try {
+			return solve_recursive_cached(layout[1..], sliced_groups, hash_count + 1,
+				result + '#', mut cache)
+		} else if hash_count >= to_try {
 			// . required
-			return solve_recursive_(layout[1..], sliced_groups, 0, result + '.')
+			return solve_recursive_cached(layout[1..], sliced_groups, 0, result + '.', mut
+				cache)
 		} else {
 			// try both
-			return solve_recursive_(layout[1..], sliced_groups, hash_count + 1, result + '#') +
-				solve_recursive_(layout[1..], sliced_groups, 0, result + '.')
+			return solve_recursive_cached(layout[1..], sliced_groups, hash_count + 1, result +
+				'#', mut cache) + solve_recursive_cached(layout[1..], sliced_groups, 0, result +
+				'.', mut cache)
 		}
 	}
 }
 
-fn solve_recursive(layout string, groups []int) int {
-	return solve_recursive_(layout.split(''), groups, 0, '')
+fn solve_recursive(layout string, groups []int) i64 {
+	mut cache := map[string]i64{}
+	return solve_recursive_cached(layout.split(''), groups, 0, '', mut cache)
 }
 
 fn process_line2(line string) i64 {
@@ -126,16 +145,20 @@ fn process_line2(line string) i64 {
 	return solve_recursive(full_layout, groups)
 }
 
-fn process_lines(lines []string) int {
+fn process_lines(lines []string) i64 {
 	return arrays.sum(lines.map(process_line)) or { 0 }
 }
 
-fn run(filename string) int {
+fn process_lines2(lines []string) i64 {
+	return arrays.sum(lines.map(process_line2)) or { 0 }
+}
+
+fn run(filename string) i64 {
 	lines := os.read_lines(filename) or { panic(err) }
 
 	processes := 4
 
-	mut threads := []thread int{}
+	mut threads := []thread i64{}
 
 	for chunk in arrays.chunk(lines, lines.len / processes) {
 		threads << spawn process_lines(chunk)
@@ -147,5 +170,15 @@ fn run(filename string) int {
 
 fn run2(filename string) i64 {
 	lines := os.read_lines(filename) or { panic(err) }
-	return arrays.sum(lines.map(process_line2)) or { 0 }
+
+	processes := 4
+
+	mut threads := []thread i64{}
+
+	for chunk in arrays.chunk(lines, lines.len / processes) {
+		threads << spawn process_lines2(chunk)
+	}
+
+	results := threads.wait()
+	return arrays.sum(results) or { 0 }
 }
