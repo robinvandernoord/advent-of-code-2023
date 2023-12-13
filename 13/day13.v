@@ -61,8 +61,6 @@ fn find_vertical(block string) int {
 
 	cols := rotate_90deg(rows)
 
-	panic(find(cols))
-
 	return find(cols)
 }
 
@@ -76,15 +74,20 @@ fn process_block(block string) int {
 }
 
 struct Smudge {
-	y     int
-	x     int
-	found bool
+	y      int
+	x      int
+	found  bool
+	result int = -1 // easier than changing the return type lol
 }
 
 fn check_rest(history []string, future []string, smudges int, y int) ?Smudge {
 	mut problems := smudges
 
-	mut smudge := Smudge{0, 0, false}
+	mut smudge := Smudge{
+		y: 0
+		x: 0
+		found: false
+	}
 
 	for idx, first in history {
 		if idx >= future.len {
@@ -104,7 +107,11 @@ fn check_rest(history []string, future []string, smudges int, y int) ?Smudge {
 				return none // problem
 			} else {
 				x := find_difference_idx(first, second) or { -1 }
-				smudge = Smudge{y - 2 - idx, x, true}
+				smudge = Smudge{
+					y: y - 2 - idx
+					x: x
+					found: true
+				}
 			}
 		}
 	}
@@ -170,13 +177,23 @@ fn find_smudge(lines []string) ?Smudge {
 			if smudge := check_rest(history.reverse()[1..], lines[idx + 1..], has_smudge,
 				idx)
 			{
+				println('result: ~${idx}')
+
 				if has_smudge == 1 && smudge.found {
 					panic('This shouldnt happen')
 				} else if has_smudge == 1 {
 					x := find_difference_idx(previous, line) or { -1 }
-					return Smudge{idx, x, true}
+					return Smudge{
+						y: idx
+						x: x
+						found: true
+						result: idx
+					}
 				} else {
-					return smudge
+					return Smudge{
+						...smudge
+						result: idx
+					}
 				}
 			}
 			// else continue?
@@ -201,7 +218,12 @@ fn find_smudge_vertical(block string) ?Smudge {
 	smudge := find_smudge(cols) or { return none }
 
 	// flip y and x:
-	return Smudge{smudge.x, smudge.y, smudge.found}
+	return Smudge{
+		y: smudge.x
+		x: smudge.y
+		found: smudge.found
+		result: smudge.result
+	}
 }
 
 fn modify_block(block string, smudge Smudge) string {
@@ -223,11 +245,20 @@ fn modify_block(block string, smudge Smudge) string {
 
 fn process_block2(block string) int {
 	if smudge_h := find_smudge_horizontal(block) {
-		return smudge_h.y * 100
+		// println('---')
+		// println(block)
+		// println(smudge_h)
+		// assert smudge_h.y == find_horizontal(modify_block(block, smudge_h))
+		// return smudge_h.y * 100
+		assert smudge_h.result > -1
+		return smudge_h.result * 100
 		// return find_horizontal(modify_block(block, smudge_h)) * 100
 	} else if smudge_v := find_smudge_vertical(block) {
-		return smudge_v.x
+		// assert smudge_v.x == find_vertical(modify_block(block, smudge_v))
+		// return smudge_v.x
 		// return find_vertical(modify_block(block, smudge_v))
+		assert smudge_v.result > -1
+		return smudge_v.result
 	} else {
 		panic('No smudge found??')
 	}
