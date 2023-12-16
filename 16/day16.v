@@ -1,28 +1,12 @@
 module day16
 
 import os
-import time
 import arrays
 
 struct Point {
 mut:
 	y int
 	x int
-}
-
-fn pretty(grid [][]rune, position Point) {
-	for y, line in grid {
-		for x, col in line {
-			if y == position.y && x == position.x {
-				print('#')
-			} else {
-				print(col)
-			}
-		}
-		println('')
-	}
-	println('')
-	time.sleep(500_000_000)
 }
 
 enum Direction {
@@ -68,10 +52,6 @@ fn walk(runes [][]rune, initial_position Point, initial_direction Direction, mut
 			return
 		}
 
-		// pretty(runes, position)
-
-		tile := row[position.x]
-
 		unique_key := hash(position, direction)
 
 		if unique_key in points_visited {
@@ -83,7 +63,7 @@ fn walk(runes [][]rune, initial_position Point, initial_direction Direction, mut
 
 		// if point + direction already seen, break!
 
-		match tile {
+		match row[position.x] {
 			`.` {
 				// do nothing but move
 				move_forward(mut position, direction)
@@ -143,13 +123,13 @@ fn walk(runes [][]rune, initial_position Point, initial_direction Direction, mut
 				move_forward(mut position, direction)
 			}
 			else {
-				panic('Invalid tile ${tile}')
+				panic('Invalid tile!')
 			}
 		}
 	}
 }
 
-fn process_points_visited(points_visited []string) []Point {
+fn process_points_visited(points_visited []string) int {
 	mut result := []Point{}
 	for point_str in points_visited {
 		parts := point_str.split('-')
@@ -162,7 +142,7 @@ fn process_points_visited(points_visited []string) []Point {
 		}
 	}
 
-	return result
+	return result.len
 }
 
 fn get_score(runes [][]rune, position Point, direction Direction) int {
@@ -170,9 +150,7 @@ fn get_score(runes [][]rune, position Point, direction Direction) int {
 
 	walk(runes, position, direction, mut points_visited)
 
-	unique_points_visited := process_points_visited(points_visited)
-
-	return unique_points_visited.len
+	return process_points_visited(points_visited)
 }
 
 fn run(filename string) int {
@@ -247,11 +225,5 @@ fn run2(filename string) int {
 
 	results := threads.wait()
 
-	println(results)
-
 	return arrays.max(results) or { 0 }
 }
-
-// fn main() {
-// 	println(run2('test.txt'))
-// }
