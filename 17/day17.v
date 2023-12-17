@@ -2,7 +2,6 @@ module main
 
 import os
 import arrays
-import time
 
 struct Point {
 	y int
@@ -119,41 +118,72 @@ fn get_options(grid [][]int, position Point, direction Direction, straight int) 
 	return options
 }
 
-fn walk(grid [][]int, position Point, direction Direction, straight int, current_score int, shared scores []int, target Point, seen []Point) {
-	options := get_options(grid, position, direction, straight)
+fn make_cache_key(position Point, direction Direction, straight int) string {
+	return '${position.y}:${position.x}-${direction}-${straight}'
+}
 
-	lock scores {
-		best_score := arrays.min(scores) or { max_int }
+fn walk(grid [][]int, position Point, direction Direction, straight int, current_score int, mut scores []int, target Point, seen []Point, mut cache map[string]int) ?int {
+	cache_key := make_cache_key(position, direction, straight)
 
-		if position == target {
-			scores << current_score
-			println('hurray! ${current_score}')
-			println('min: ${best_score}')
-			return
-		}
+	cached_distance := cache[cache_key]
 
-		if current_score >= best_score {
-			// already too high!
-			return
-		}
+	if cached_distance > 0 {
+		return cached_distance + current_score
+	} else if cached_distance == -1 {
+		return none
+	}
+
+	best_score := arrays.min(scores) or { max_int }
+
+	if position == target {
+		scores << current_score
+		println('hurray! ${current_score}')
+		println('min: ${best_score}')
+		return current_score
+	}
+
+	if current_score >= best_score {
+		// already too high!
+		return none
 	}
 
 	if position in seen {
 		// prevent loop
-		return
+		return none
 	}
 
 	mut newseen := seen.clone()
 	newseen << position
 
+	options := get_options(grid, position, direction, straight)
+	mut option_results := []int{}
 	for option in options {
 		new_straight := if option.direction == direction {
 			straight + 1
 		} else {
 			1
 		}
-		walk(grid, option.Point, option.direction, new_straight, current_score + option.weight, shared
-			scores, target, newseen)
+		if option_result := walk(grid, option.Point, option.direction, new_straight,
+			current_score + option.weight, mut scores, target, newseen, mut cache)
+		{
+			option_results << option_result
+		}
+	}
+
+	if option_results.len > 0 {
+		result := arrays.min(option_results) or { panic(err) }
+
+		distance := result - current_score
+		existing_distance := cache[cache_key]
+
+		if existing_distance == 0 || existing_distance > distance {
+			cache[cache_key] = distance
+		}
+
+		return result
+	} else {
+		cache[cache_key] = -1 // invalid
+		return none
 	}
 }
 
@@ -162,54 +192,21 @@ fn get_target(grid [][]int) Point {
 	return Point{grid.len - 1, row.len - 1}
 }
 
-fn run_async(grid [][]int, output_ch chan int, shared scores []int) {
-	mut position := Point{0, 0}
-	mut direction := Direction.right
-
-	target := get_target(grid)
-
-	// todo: start thread
-	// set timeout
-	// if it takes too long, stop and use current high score
-
-	walk(grid, position, direction, 1, 0, shared scores, target, []Point{})
-
-	rlock scores {
-		output_ch <- arrays.min(scores) or { 0 }
-	}
-}
-
-fn run_with_timeout(filename string, timeout_sec int) int {
+fn run(filename string) int {
 	contents := os.read_lines(filename) or { panic(err) }
 	grid := contents.map(it.split('').map(it.int()))
 
-	shared scores := []int{}
+	mut scores := []int{}
+	position := Point{0, 0}
+	direction := Direction.right
 
-	ch := chan int{}
+	target := get_target(grid)
 
-	go run_async(grid, ch, shared scores)
+	mut cache := map[string]int{}
 
-	select {
-		result := <-ch {
-			return result
-		}
-		timeout_sec * 1000 * time.millisecond { // 50.000 sec ~ 13 hours
-			rlock scores {
-				return arrays.min(scores) or { 0 }
-			}
-		}
-	}
-
-	return 0
-}
-
-fn run(filename string) int {
-	return run_with_timeout(filename, 50)
+	return walk(grid, position, direction, 1, 0, mut scores, target, []Point{}, mut cache) or { 0 }
 }
 
 fn main() {
-	// println("dev:")
-	// println("!!! final dev result: ${run_with_timeout('dev.txt', 5)}}") // 5 sec
-	println("test:")
-	println("!!! final test result: ${run_with_timeout('test.txt', 50_000)}}") // ~ 13 hours
+	println('done: ${run('dev.txt')}')
 }
