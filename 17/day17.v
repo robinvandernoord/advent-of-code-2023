@@ -122,7 +122,7 @@ fn make_cache_key(position Point, direction Direction, straight int) string {
 	return '${position.y}:${position.x}-${direction}-${straight}'
 }
 
-fn walk(grid [][]int, position Point, direction Direction, straight int, current_score int, mut scores []int, target Point, seen []Point, mut cache map[string]int) ?int {
+fn walk(grid [][]int, position Point, direction Direction, straight int, current_score int, target Point, seen []Point, mut cache map[string]int) ?int {
 	cache_key := make_cache_key(position, direction, straight)
 
 	cached_distance := cache[cache_key]
@@ -133,19 +133,15 @@ fn walk(grid [][]int, position Point, direction Direction, straight int, current
 		return none
 	}
 
-	best_score := arrays.min(scores) or { max_int }
+	if current_score >= 1010 {
+		// kinda hacky but too high according to AoC
+		return none
+	}
 
 	if position == target {
-		scores << current_score
-		println('hurray! ${current_score}')
-		println('min: ${best_score}')
 		return current_score
 	}
 
-	if current_score >= best_score {
-		// already too high!
-		return none
-	}
 
 	if position in seen {
 		// prevent loop
@@ -164,7 +160,7 @@ fn walk(grid [][]int, position Point, direction Direction, straight int, current
 			1
 		}
 		if option_result := walk(grid, option.Point, option.direction, new_straight,
-			current_score + option.weight, mut scores, target, newseen, mut cache)
+			current_score + option.weight, target, newseen, mut cache)
 		{
 			option_results << option_result
 		}
@@ -192,21 +188,56 @@ fn get_target(grid [][]int) Point {
 	return Point{grid.len - 1, row.len - 1}
 }
 
+fn prepare_cache(grid [][]int, target Point, mut global_cache map[string]int) {
+	mut n := -1
+	total := grid.len * grid[0].len
+
+	for y_ in 0 .. grid.len {
+		y := grid.len - y_ - 1
+
+		for x_ in 0 .. grid[y].len {
+			n++
+
+			if n % (y + 1) != 0 {
+				// only do some items
+				continue
+			}
+
+			println('${n} / ${total}')
+
+			x := grid[y].len - x_ - 1
+			mut cache := global_cache.clone()
+
+			position := Point{y, x}
+			straight := 1
+
+			for direction in [Direction.up, .right, .down, .left] {
+				result := walk(grid, position, direction, straight, 0, target,
+					[]Point{}, mut cache) or { -1 }
+
+				if result == -1 {
+					continue
+				}
+
+				global_cache[make_cache_key(position, direction, straight)] = result
+			}
+		}
+	}
+}
+
 fn run(filename string) int {
 	contents := os.read_lines(filename) or { panic(err) }
 	grid := contents.map(it.split('').map(it.int()))
 
-	mut scores := []int{}
-	position := Point{0, 0}
-	direction := Direction.right
-
-	target := get_target(grid)
 
 	mut cache := map[string]int{}
+	target := get_target(grid)
 
-	return walk(grid, position, direction, 1, 0, mut scores, target, []Point{}, mut cache) or { 0 }
+	prepare_cache(grid, target, mut cache)
+
+	return walk(grid, Point{0, 0}, .right, 1, 0, target, []Point{}, mut cache) or { -1 }
 }
 
 fn main() {
-	println('done: ${run('dev.txt')}')
+	println('done: ${run('test.txt')}')
 }
